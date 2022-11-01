@@ -1,0 +1,339 @@
+---
+title: "Lure Decay 2.0"
+author: "Knitable Results Doc"
+date: "2022-11-01"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(reshape2)
+library(knitr)
+library(kableExtra)
+```
+
+```{r, include=FALSE}
+
+#Function for generating data
+
+exact.seq <- function(rounds, seq) {
+  i = 1
+  if ((rounds %% 2) == 0) {
+    col = (rounds / 2) + 3
+  } else {
+    col = (rounds / 2) + 2.5
+  }
+  if (rounds == 6) {
+    data <- matrix(ncol = col, nrow = length(seq))
+    data = as.data.frame(data)
+    data <-
+      rename(
+        data,
+        c(
+          "six_rounds" = "V1",
+          "five_rounds" = "V2",
+          "four_rounds" = "V3",
+          "three_rounds" = "V4",
+          "decay_chance" = "V5",
+          "avg_rounds" = "V6"
+        )
+      )
+    while (i <= length(seq)) {
+      d = seq[i] / 100
+      n = 1 - d
+      a = n ^ 5 #Chance for six_rounds
+      b = (n ^ 4 * d) + (4 * (n ^ 3 * d)) #Chance for five_rounds
+      c = (3 * (n * d ^ 2)) + (3 * (d ^ 2 * n ^ 2)) #Chance for four_rounds
+      e = d ^ 3 #Chance for three_rounds
+      f = ((a*rounds)+(b*(rounds - 1))+(c*(rounds - 2))+(e*(rounds - 3))) #avg rounds lured
+      data[i, 1] <- a
+      data[i, 2] <- b
+      data[i, 3] <- c
+      data[i, 4] <- e
+      data[i, 5] <- seq[i]
+      data[i, 6] <- f
+      i = i+1
+    }
+    return(data)
+  } else if (rounds == 5) {
+    data <- matrix(ncol = col, nrow = length(seq))
+    data = as.data.frame(data)
+    data <-
+      rename(data,
+             c(
+               "five_rounds" = "V1",
+               "four_rounds" = "V2",
+               "three_rounds" = "V3",
+               "decay_chance" = "V4",
+               "avg_rounds" = "V5"
+             ))
+    while (i <= length(seq)) {
+      d = seq[i] / 100
+      n = 1 - d
+      a = n ^ 4 #Chance for five_rounds
+      b = (n ^ 3 * d) + (3 * (n ^ 2 * d)) #Chance for four_rounds
+      c = (2 * (n * d ^ 2)) + d ^ 2 #Chance for three_rounds
+      f = ((a*rounds)+(b*(rounds - 1))+(c*(rounds - 2))) #avg rounds lured
+      data[i, 1] <- a
+      data[i, 2] <- b
+      data[i, 3] <- c
+      data[i, 4] <- seq[i]
+      data[i, 5] <- f
+      i = i + 1
+    }
+    return(data)
+  } else if (rounds == 4) {
+    data <- matrix(ncol = col, nrow = length(seq))
+    data = as.data.frame(data)
+    data <-
+      rename(data,
+             c(
+               "four_rounds" = "V1",
+               "three_rounds" = "V2",
+               "two_rounds" = "V3",
+               "decay_chance" = "V4",
+               "avg_rounds" = "V5"
+             ))
+    while (i <= length(seq)) {
+      d = seq[i] / 100
+      n = 1 - d
+      a = n ^ 3 #Chance for four_rounds
+      b = (n ^ 2 * d) + (2 * (n * d)) #Chance for three_rounds
+      c = d ^ 2 #Chance for two_rounds
+      f = ((a*rounds)+(b*(rounds - 1))+(c*(rounds - 2))) #avg rounds lured
+      data[i, 1] <- a
+      data[i, 2] <- b
+      data[i, 3] <- c
+      data[i, 4] <- seq[i]
+      data[i, 5] <- f
+      i = i + 1
+    }
+    return(data)
+  } else if (rounds == 3) {
+    data <- matrix(ncol = col, nrow = length(seq))
+    data = as.data.frame(data)
+    data <-
+      rename(data,
+             c(
+               "three_rounds" = "V1",
+               "two_rounds" = "V2",
+               "decay_chance" = "V3",
+               "avg_rounds" = "V4"
+             ))
+    while (i <= length(seq)) {
+      d = seq[i] / 100
+      n = 1 - d
+      a = n ^ 2 #Chance for three_rounds
+      b = (n * d) + d #Chance for two_rounds
+      f = ((a*rounds)+(b*(rounds - 1))) #avg rounds lured
+      data[i, 1] <- a
+      data[i, 2] <- b
+      data[i, 3] <- seq[i]
+      data[i, 4] <- f
+      i = i + 1
+    }
+    return(data)
+  } else if (rounds == 2) {
+    data <- matrix(ncol = col, nrow = length(seq))
+    data = as.data.frame(data)
+    data <-
+      rename(data,
+             c(
+               "two_rounds" = "V1",
+               "one_round" = "V2",
+               "decay_chance" = "V3",
+               "avg_rounds" = "V4"
+             ))
+    while (i <= length(seq)) {
+      d = seq[i] / 100
+      n = 1 - d
+      a = n #chance for two_rounds
+      b = d #chance for one_round
+      f = ((a*rounds)+(b*(rounds - 1))) #avg rounds lured
+      data[i, 1] <- a
+      data[i, 2] <- b
+      data[i, 3] <- seq[i]
+      data[i, 4] <- f
+      i = i + 1
+    }
+    return(data)
+  } else
+    print(
+      "This function is not configured to calculate percentages for the number of rounds you entered."
+    )
+}
+```
+
+```{r}
+#Generating and Formatting of Data 
+
+data_6 <- exact.seq(6, 0:100)
+data6.1 = melt(data_6, id.vars = c("decay_chance", "avg_rounds"))
+data6 = data6.1 %>% 
+  mutate(base_lure = "Six Rounds (Presentation 1.2)")
+
+data_5 <- exact.seq(5, 0:100)
+data5.1 = melt(data_5, id.vars = c("decay_chance", "avg_rounds"))
+data5 = data5.1 %>% 
+  mutate(base_lure = "Five Rounds (Presentation)")
+
+data_4 <- exact.seq(4, 0:100)
+data4.1 = melt(data_4, id.vars = c("decay_chance", "avg_rounds"))
+data4 = data4.1 %>% 
+  mutate(base_lure = "Four Rounds (Hypno Goggles)")
+
+data_3 <- exact.seq(3, 0:100)
+data3.1 = melt(data_3, id.vars = c("decay_chance", "avg_rounds"))
+data3 = data3.1 %>% 
+  mutate(base_lure = "Three Rounds (Big Magnet)")
+
+data_2 <- exact.seq(2, 0:100)
+data2.1 = melt(data_2, id.vars = c("decay_chance", "avg_rounds"))
+data2 = data2.1 %>% 
+  mutate(base_lure = "Two Rounds (Small Magnet)")
+
+mer.65 <- merge(data6, data5, all = TRUE)
+mer.64 <- merge(mer.65, data4, all = TRUE)
+mer.63 <- merge(mer.64, data3, all = TRUE)
+mer.total <- merge(mer.63, data2, all = TRUE)
+
+mer.total <- rename(mer.total,
+             c("lure_lasts" = "variable",
+               "lasts_perc" = "value"))
+```
+
+##Making Tables
+
+```{r,echo=FALSE}
+
+#Formatting Data for Tables
+
+#Averages Data
+
+avg.data1 <- mer.total %>% 
+  select(decay_chance, avg_rounds, base_lure) 
+  
+avg.data <- avg.data1[!duplicated(avg.data1), ] %>% 
+  pivot_wider(names_from = base_lure, values_from = avg_rounds) %>% 
+  filter(decay_chance == 5  | decay_chance == 10 | decay_chance == 15 | decay_chance == 20 | decay_chance == 25 | decay_chance == 30 | decay_chance == 35 | decay_chance == 40 | decay_chance == 45 | decay_chance == 50 | decay_chance == 55 | decay_chance == 60 | decay_chance == 65 | decay_chance == 70)
+
+#2 Rounds
+
+filt_data2 <- data2 %>% subset(select = c(decay_chance, variable, value, avg_rounds)) %>% 
+  filter(decay_chance == 5  | decay_chance == 10 | decay_chance == 15 | decay_chance == 20 | decay_chance == 25 | decay_chance == 30 | decay_chance == 35 | decay_chance == 40 | decay_chance == 45 | decay_chance == 50 | decay_chance == 55 | decay_chance == 60 | decay_chance == 65 | decay_chance == 70)
+
+tab2 <- pivot_wider(filt_data2, names_from = "variable", values_from = "value")
+
+#3 Rounds
+
+filt_data3 <- data3 %>% subset(select = c(decay_chance, variable, value, avg_rounds)) %>% 
+  filter(decay_chance == 5  | decay_chance == 10 | decay_chance == 15 | decay_chance == 20 | decay_chance == 25 | decay_chance == 30 | decay_chance == 35 | decay_chance == 40 | decay_chance == 45 | decay_chance == 50 | decay_chance == 55 | decay_chance == 60 | decay_chance == 65 | decay_chance == 70)
+
+tab3 <- pivot_wider(filt_data3, names_from = "variable", values_from = "value")
+
+#4 Rounds
+
+filt_data4 <- data4 %>% subset(select = c(decay_chance, variable, value, avg_rounds)) %>% 
+  filter(decay_chance == 5  | decay_chance == 10 | decay_chance == 15 | decay_chance == 20 | decay_chance == 25 | decay_chance == 30 | decay_chance == 35 | decay_chance == 40 | decay_chance == 45 | decay_chance == 50 | decay_chance == 55 | decay_chance == 60 | decay_chance == 65 | decay_chance == 70)
+
+tab4 <- pivot_wider(filt_data4, names_from = "variable", values_from = "value")
+
+#5 Rounds
+
+filt_data5 <- data5 %>% subset(select = c(decay_chance, variable, value, avg_rounds)) %>% 
+  filter(decay_chance == 5  | decay_chance == 10 | decay_chance == 15 | decay_chance == 20 | decay_chance == 25 | decay_chance == 30 | decay_chance == 35 | decay_chance == 40 | decay_chance == 45 | decay_chance == 50 | decay_chance == 55 | decay_chance == 60 | decay_chance == 65 | decay_chance == 70)
+
+tab5 <- pivot_wider(filt_data5, names_from = "variable", values_from = "value")
+
+#6 Rounds
+
+filt_data6 <- data6 %>% subset(select = c(decay_chance, variable, value, avg_rounds)) %>% 
+  filter(decay_chance == 5  | decay_chance == 10 | decay_chance == 15 | decay_chance == 20 | decay_chance == 25 | decay_chance == 30 | decay_chance == 35 | decay_chance == 40 | decay_chance == 45 | decay_chance == 50 | decay_chance == 55 | decay_chance == 60 | decay_chance == 65 | decay_chance == 70)
+
+tab6 <- pivot_wider(filt_data6, names_from = "variable", values_from = "value")
+
+#Making Tables 
+
+avg.data %>%
+  kbl(caption = "Breakdown of Average Rounds Lured by Decay Chance for Each Base Gag", align = "c", col.names = c("Decay Chance (%)", "Avg. Rounds Small Magnet (2 Base Rounds)", "Avg. Rounds Big Magnet (3 Base Rounds)", "Avg. Rounds Hypno Goggles (4 Base Rounds)", "Avg. Rounds Presentation (5 Base Rounds)", "Avg. Rounds Presentation 1.2 (6 Base Rounds)")) %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
+  column_spec(1, bold = T, border_right = T)
+
+tab2 %>%
+  kbl(caption = "Breakdown of Relevant Statistics for a Base Lure of 2 Rounds (Small Magnet)", align = "c", col.names = c("Decay Chance (%)", "Avg. Rounds Lured", "Prob. Lure Lasts 2 Rounds", "Prob. Lure Lasts 1 Round")) %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
+  column_spec(1, bold = T, border_right = T)
+
+tab3 %>%
+  kbl(caption = "Breakdown of Relevant Statistics for a Base Lure of 3 Rounds (Big Magnet)", align = "c", col.names = c("Decay Chance (%)", "Avg. Rounds Lured", "Prob. Lure Lasts 3 Rounds", "Prob. Lure Lasts 2 Round")) %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
+  column_spec(1, bold = T, border_right = T)
+
+tab4 %>%
+  kbl(caption = "Breakdown of Relevant Statistics for a Base Lure of 4 Rounds (Hypno Goggles)", align = "c", col.names = c("Decay Chance (%)", "Avg. Rounds Lured", "Prob. Lure Lasts 4 Rounds", "Prob. Lure Lasts 3 Round", "Prob. Lure Lasts 2 Round")) %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
+  column_spec(1, bold = T, border_right = T)
+
+tab5 %>%
+  kbl(caption = "Breakdown of Relevant Statistics for a Base Lure of 5 Rounds (Presentation)", align = "c", col.names = c("Decay Chance (%)", "Avg. Rounds Lured", "Prob. Lure Lasts 5 Rounds", "Prob. Lure Lasts 4 Round", "Prob. Lure Lasts 3 Round")) %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
+  column_spec(1, bold = T, border_right = T)
+
+tab6 %>%
+  kbl(caption = "Breakdown of Relevant Statistics for a Base Lure of 6 Rounds (Presentation 1.2)", align = "c", col.names = c("Decay Chance (%)", "Avg. Rounds Lured", "Prob. Lure Lasts 6 Rounds", "Prob. Lure Lasts 5 Round", "Prob. Lure Lasts 4 Round", "Prob. Lure Lasts 3 Round")) %>%
+  kable_classic(full_width = F, html_font = "Cambria") %>% 
+  column_spec(1, bold = T, border_right = T)
+
+```
+
+##Plots
+
+```{r}
+#Plot of Average Rounds of Lure by Chance of Lure Decay
+gag_order <- factor(mer.total$base_lure, level = c("Six Rounds (Presentation 1.2)", "Five Rounds (Presentation)", "Four Rounds (Hypno Goggles)", "Three Rounds (Big Magnet)", "Two Rounds (Small Magnet)" ))
+
+ggplot(mer.total, aes(x = decay_chance, y = avg_rounds, color = gag_order)) + 
+  geom_line()+
+      scale_x_continuous(name = "Decay Chance (%)", breaks = seq(0,100,5)) +
+      scale_y_continuous(name = "Average Rounds of Lure", breaks = seq(0,6,1)) +
+  labs(title = "Average Rounds Lured by Decay Chance for Each Base Gag", color = "Base Gag")
+
+#Base 2 Rounds
+ggplot(data2, aes_string("decay_chance", "value", color = "variable")) + 
+      geom_line() +
+      scale_x_continuous(name = "Decay Chance (%)", breaks = seq(0,100,5)) +
+      scale_y_continuous(name = "Probability Lure Lasts n Rounds", breaks = seq(0,1,0.1))  +
+  labs(title = "Probability Lure Lasts n Rounds by Chance of Lure Decay for a Base Lure of 2 Rounds (Small Magnet)", color = "Number of Rounds Lure Lasts")
+
+#Base 3 Rounds
+ggplot(data3, aes_string("decay_chance", "value", color = "variable")) + 
+      geom_line() +
+      scale_x_continuous(name = "Decay Chance (%)", breaks = seq(0,100,5)) +
+      scale_y_continuous(name = "Probability Lure Lasts n Rounds", breaks = seq(0,1,0.1))  +
+  labs(title = "Probability Lure Lasts n Rounds by Chance of Lure Decay for a Base Lure of 3 Rounds (Big Magnet)", color = "Number of Rounds Lure Lasts")
+
+#Base 4 Rounds
+ggplot(data4, aes_string("decay_chance", "value", color = "variable")) + 
+      geom_line() +
+      scale_x_continuous(name = "Decay Chance (%)", breaks = seq(0,100,5)) +
+      scale_y_continuous(name = "Probability Lure Lasts n Rounds", breaks = seq(0,1,0.1))  +
+  labs(title = "Probability Lure Lasts n Rounds by Chance of Lure Decay for a Base Lure of 4 Rounds (Hypno Goggles)", color = "Number of Rounds Lure Lasts")
+
+#Base 5 Rounds
+ggplot(data5, aes_string("decay_chance", "value", color = "variable")) + 
+      geom_line() +
+      scale_x_continuous(name = "Decay Chance (%)", breaks = seq(0,100,5)) +
+      scale_y_continuous(name = "Probability Lure Lasts n Rounds", breaks = seq(0,1,0.1))  +
+  labs(title = "Probability Lure Lasts n Rounds by Chance of Lure Decay for a Base Lure of 5 Rounds (Presentation)", color = "Number of Rounds Lure Lasts")
+ 
+
+#Base 6 Rounds
+ggplot(data6, aes_string("decay_chance", "value", color = "variable")) + 
+      geom_line() +
+      scale_x_continuous(name = "Decay Chance (%)", breaks = seq(0,100,5)) +
+      scale_y_continuous(name = "Probability Lure Lasts n Rounds", breaks = seq(0,1,0.1))  +
+  labs(title = "Probability Lure Lasts n Rounds by Chance of Lure Decay for a Base Lure of 6 Rounds (Presentation 1.2)", color = "Number of Rounds Lure Lasts")
+ 
+```
